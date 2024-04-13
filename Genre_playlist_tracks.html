@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spotify Genres</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: black;
+    }
+    .container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #7d9d9e;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+        text-align: center;
+        color: #333;
+    }
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+    li {
+        margin-bottom: 10px;
+    }
+    .genre {
+        background-color: gray;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    .genre:hover {
+        transform: scale(1.1);
+        background-color: aqua;
+    }
+    .playlist {
+        margin-left: 20px;
+    }
+    .track {
+        margin-left: 20px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Spotify Genres</h1>
+    <input type="text" id="search-input" placeholder="Search genre...">
+    <button id="search-button">Search</button>
+    <button id="reset-button">Reset</button>
+    <input type="checkbox" id="show-playlist-checkbox">
+    <label for="show-playlist-checkbox">Show Playlist</label>
+    
+    <ul id="genres-list"> 
+        
+    </ul>
+</div>
+
+<script>
+    async function fetchGenres() {
+        const clientId = "3297beb693ad4f55883d356118880199";
+        const clientSecret = "d64dba3dc0f141549bc0186441bf16a6";
+
+        // Fetch access token from Spotify API
+        const response = await fetch("https://accounts.spotify.com/api/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic " + btoa(clientId + ":" + clientSecret)
+            },
+            body: "grant_type=client_credentials"
+        });
+        const data = await response.json();
+        const accessToken = data.access_token;
+
+        // Fetch genres from Spotify API using access token
+        const genresResponse = await fetch("https://api.spotify.com/v1/browse/categories?country=US&locale=en_US", {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + accessToken
+            }
+        });
+        const genresData = await genresResponse.json();
+
+        // Display genres on the page
+        const genresList = document.getElementById("genres-list");
+        
+
+        genresData.categories.items.forEach(async item => {
+            const genreName = item.name;
+            const listItem = document.createElement("li");
+            listItem.innerHTML = `<button class="genre">${genreName}</button>`;
+            genresList.appendChild(listItem);
+
+            // Fetch and display playlists when "Show Playlist" checkbox is checked
+            const showPlaylistCheckbox = document.getElementById("show-playlist-checkbox");
+            showPlaylistCheckbox.addEventListener("change", async () => {
+                if (showPlaylistCheckbox.checked) {
+                    const playlistsResponse = await fetch(`https://api.spotify.com/v1/browse/categories/${item.id}/playlists?country=US&locale=en_US`, {
+                        method: "GET",
+                        headers: {
+                            "Authorization": "Bearer " + accessToken
+                        }
+                    });
+                    const playlistsData = await playlistsResponse.json();
+
+                    //marina
+                    console.log(playlistsData);
+
+                    const playlistList = document.createElement("ul");
+                    playlistList.classList.add("playlist");
+                    playlistsData.playlists.items.forEach(async playlist => {
+                        const playlistItem = document.createElement("li");
+                        playlistItem.textContent = playlist.name;
+                        playlistList.appendChild(playlistItem);
+                        
+                        // Fetch and display tracks for each playlist
+                        const tracksResponse = await fetch(playlist.tracks.href, {
+                            method: "GET",
+                            headers: {
+                                "Authorization": "Bearer " + accessToken
+                            }
+                        });
+                        const tracksData = await tracksResponse.json();
+
+                        //marina2
+                        console.log(tracksData);
+
+                        if (tracksData && tracksData.items && tracksData.items.length > 0) {
+                            const trackList = document.createElement("ul");
+                            trackList.classList.add("track");
+                            tracksData.items.forEach(track => {
+                                const trackItem = document.createElement("li");
+                                trackItem.textContent = track.track.name;
+                                trackList.appendChild(trackItem);
+                            });
+                            playlistItem.appendChild(trackList);
+                        }
+                    });
+                    listItem.appendChild(playlistList);
+                } else {
+                    const existingPlaylistList = listItem.querySelector("ul.playlist");
+                    if (existingPlaylistList) {
+                        listItem.removeChild(existingPlaylistList);
+                    }
+                }
+            });
+        });
+
+        // Search/filter genres based on user input
+        const searchButton = document.getElementById("search-button");
+        searchButton.addEventListener("click", () => {
+            const searchInput = document.getElementById("search-input").value.toLowerCase();
+            const genreButtons = document.querySelectorAll(".genre");
+            genreButtons.forEach(button => {
+            const genreName = button.textContent.toLowerCase();
+                if (genreName.includes(searchInput)) {
+                    button.parentElement.style.display = "block";
+                } else {
+                    button.parentElement.style.display = "none";
+                }
+            });
+        });
+
+        // Reset all fields and show all available genres
+        const resetButton = document.getElementById("reset-button");
+        resetButton.addEventListener("click", () => {
+            document.getElementById("search-input").value = "";
+            const genreButtons = document.querySelectorAll(".genre");
+            genreButtons.forEach(button => {
+                button.parentElement.style.display = "block";
+            }); 
+        });
+    }
+
+    window.onload = fetchGenres;
+</script>
+
+</body>
+</html>

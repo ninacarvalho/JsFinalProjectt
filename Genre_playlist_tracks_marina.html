@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spotify Genres</title>
+</head>
+<body>
+
+<script>
+    async function fetchGenresAndPlaylists() {
+        const clientId = "3297beb693ad4f55883d356118880199";
+        const clientSecret = "d64dba3dc0f141549bc0186441bf16a6";
+
+        // Fetch access token from Spotify API
+        const tokenResponse = await fetch("https://accounts.spotify.com/api/token", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": "Basic " + btoa(clientId + ":" + clientSecret)
+            },
+            body: "grant_type=client_credentials"
+        });
+        const tokenData = await tokenResponse.json();
+        const accessToken = tokenData.access_token;
+
+        // Fetch genres from Spotify API using access token
+        const genresResponse = await fetch("https://api.spotify.com/v1/browse/categories?country=US&locale=en_US", {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + accessToken
+            }
+        });
+        const genresData = await genresResponse.json();
+
+        // Display genres in the console
+        console.log("Genres:");
+        for (const genre of genresData.categories.items) {
+            console.log(genre.name);
+            await listPlaylistsAndTracks(genre.id, accessToken);
+        }
+    }
+
+    async function listPlaylistsAndTracks(genreId, accessToken) {
+        // Fetch playlists for a specific genre from Spotify API
+        const playlistsResponse = await fetch(`https://api.spotify.com/v1/browse/categories/${genreId}/playlists?country=US&locale=en_US`, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + accessToken
+            }
+        });
+        const playlistsData = await playlistsResponse.json();
+
+        // Display playlists and tracks in the console
+        console.log("Playlists:");
+        playlistsData.playlists.items.forEach(playlist => {
+            console.log(" - " + playlist.name);
+            listTracks(playlist.tracks.href, accessToken);
+        });
+    }
+
+    async function listTracks(tracksHref, accessToken) {
+        // Fetch tracks for a specific playlist from Spotify API
+        const tracksResponse = await fetch(tracksHref, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + accessToken
+            }
+        });
+        const tracksData = await tracksResponse.json();
+
+        // Display tracks in the console
+        console.log("Tracks:");
+        for (const track of tracksData.items) {
+            console.log("   - " + track.track.name);
+        }
+    }
+
+    // Call the function to fetch genres and playlists
+    fetchGenresAndPlaylists();
+</script>
+
+</body>
+</html>
